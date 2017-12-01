@@ -59,18 +59,13 @@ def get_user(id):
                          }), 200)
 
 
-
-
-
 @app.route('/api/users')
 def get_users():
     users = User.query.all()
     if not users:
         return (jsonify({'users':'null'}),200)
     else:
-        return jsonify({
-            'users': [u.dumps() for u in users]
-        })
+        return jsonify( [u.dumps() for u in users])
 
 
 @app.route('/api/users', methods=['POST'])
@@ -122,6 +117,96 @@ def verify_password(username, password):
         return False
     g.user = user
     return True
+
+
+class Book(db.Model):
+    __tablename__ = 'books'
+    book_no = db.Column(db.String(30), primary_key=True)
+    book_name = db.Column(db.String(100))
+    intro_addr = db.Column(db.String(300))
+
+    def dumps(self):
+        return {
+            'book_no': self.book_no,
+            'book_name': self.book_name,
+            'intro_addr': self.intro_addr,
+        }
+
+
+@app.route('/api/books/<string:book_no>')
+def get_book(book_no):
+    book = Book.query.get(book_no)
+    if not book:
+        abort(400)
+    else:
+        return (jsonify({
+                        'book_no': book_no,
+                        'book_name': book.username,
+                         'intro_addr': book.intro_addr
+                         }), 200)
+
+
+@app.route('/api/books')
+def get_books():
+    books = Book.query.all()
+
+    if not books:
+        return (jsonify({'books':'null'}),200)
+    else:
+        return jsonify( [u.dumps() for u in books])
+
+
+
+@app.route('/api/books', methods=['POST'])
+def new_book():
+    book_no = request.json.get('book_no')
+    book_name = request.json.get('book_name')
+    intro_addr = request.json.get('intro_addr')
+    if book_name is None or book_no is None:
+        abort(400)    # missing arguments
+    if Book.query.filter_by(book_name=book_name).first() is not None:
+        abort(400)    # existing book
+    if Book.query.filter_by(book_no=book_no).first() is not None:
+        abort(400)    # existing book
+
+    book = Book(book_no=book_no)
+    book.book_name = book_name
+    book.intro_addr = intro_addr
+    db.session.add(book)
+    db.session.commit()
+    return (jsonify({'book_name': book.book_name}), 201,
+            {'Location': url_for('get_books', _external=True)})
+
+
+@app.route('/api/books/<string:book_no>', methods=['DELETE'])
+def delete_book(book_no):
+    book = Book.query.get(book_no)
+    if book is not None:
+        db.session.delete(book)
+        db.session.commit()
+        return (jsonify({'book deleted': book.book_name}), 201,
+            {'Location': url_for('get_books', _external=True)})
+    else:
+        abort(400)
+
+
+@app.route('/api/books/<string:book_no>', methods=['PUT'])
+def change_book(book_no):
+    book = Book.query.get(book_no)
+    if book is not None:
+        book_name = request.json.get('book_name')
+        intro_addr = request.json.get('intro_addr')
+        book.book_name = book_name
+        book.intro_addr = intro_addr
+        db.session.commit()
+        return (jsonify({'book updated': book.book_no}), 201)
+    else:
+        abort(400)
+
+
+
+
+
 
 
 if __name__ == '__main__':
