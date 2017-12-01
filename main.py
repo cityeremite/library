@@ -46,15 +46,20 @@ class User(db.Model):
             'create_date': self.create_date,
         }
 
+
 @app.route('/api/users/<int:id>')
 def get_user(id):
     user = User.query.get(id)
     if not user:
         abort(400)
     else:
-        return (jsonify({'username': user.username,
+        return (jsonify({
+                        'username': user.username,
                          'create_date': user.create_date
-                         }),200)
+                         }), 200)
+
+
+
 
 
 @app.route('/api/users')
@@ -83,6 +88,31 @@ def new_user():
     db.session.commit()
     return (jsonify({'username': user.username}), 201,
             {'Location': url_for('get_users', _external=True)})
+
+
+@app.route('/api/users/<int:id>', methods=['DELETE'])
+def delete_user(id):
+    user = User.query.get(id)
+    if user is not None:
+        db.session.delete(user)
+        db.session.commit()
+        return (jsonify({'user deleted': user.username}), 201,
+            {'Location': url_for('get_users', _external=True)})
+    else:
+        abort(400)
+
+
+@app.route('/api/users/<int:id>', methods=['PUT'])
+def change_user(id):
+    user = User.query.get(id)
+    if user is not None:
+        password = request.json.get('password')
+        user.hash_password(password)
+        db.session.commit()
+        return (jsonify({'user updated': user.username}), 201)
+    else:
+        abort(400)
+
 
 
 @auth.verify_password
